@@ -1,0 +1,6 @@
+.DS_Store
+mind_dataset/
+knowledge_distillation/trained_models/
+knowledge_distillation/__pycache__/
+knowledge_distillation/.ipynb_checkpoints/
+.vector_cache/
