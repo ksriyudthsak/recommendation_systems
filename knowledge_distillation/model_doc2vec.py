@@ -59,8 +59,8 @@ class Doc2vecModelling:
 
         model = Doc2Vec(train_text_tag, dm=0, vector_size=24, window=5, min_count=1, workers=4, epochs=100)
         # model = Doc2Vec(train_text_tag, dm=0, vector_size=24, window=5, min_count=1, workers=4, epochs=num_epochs)
-        # filename = data_path_train + "doc2vec_model.model"
-        filename = "trained_models/" + "doc2vec_model.model"
+        filename = data_path_train + "doc2vec_model.model"
+        # filename = "trained_models/" + "doc2vec_model.model"
         model.save(filename)
         return model
 

@@ -94,7 +94,7 @@ class KnowledgeDistillationModelling():
         return model, device
 
     # train with multi-teacher
-    def train_multi_teachers_kd(st_model, teacher_models, device, train_iter, num_epochs):
+    def train_multi_teachers_kd(st_model, teacher_models, device, train_iter, num_epochs=10, model_path="/", model_name="kd"):
         # https://github.com/FLHonker/AMTML-KD-code/blob/master/multi_teacher_avg_distill.ipynb
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
         temp = 20.0
@@ -154,7 +154,7 @@ class KnowledgeDistillationModelling():
 
         # save model
         model_filename = model_path + model_name + ".pth"
-        torch.save(model.state_dict(), model_filename)
+        torch.save(st_model.state_dict(), model_filename)
 
         # release GPU memory
         torch.cuda.empty_cache()
