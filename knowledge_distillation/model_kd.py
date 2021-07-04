@@ -159,7 +159,75 @@ class KnowledgeDistillationModelling():
         # release GPU memory
         torch.cuda.empty_cache()
         return st_model, device
-        
+
+    # train with multi-teacher with adjusted parameters
+    def train_multi_teachers_kd_param(st_model, teacher_models, device, train_iter, 
+                                num_epochs=10, model_path="/", model_name="kd", 
+                                temp=20.0, lr=0.01):
+        # https://github.com/FLHonker/AMTML-KD-code/blob/master/multi_teacher_avg_distill.ipynb
+
+        print("temp:{}, lr:{}".format(temp, lr))
+        optimizer = optim.Adam(st_model.parameters(), lr=lr)
+        optimizer_sgd = optim.SGD(st_model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer_sgd, milestones=[100, 150])
+
+        start = time.time()
+        for epoch in range(num_epochs):
+            lr_scheduler.step()
+
+            # switch to train mode
+            st_model = st_model.to(device)
+            st_model.train()
+            all_loss = 0
+            for i, batch in enumerate(train_iter):
+                target = batch.label.to(device)
+                target = torch.tensor(target, dtype=torch.long)
+                input = batch.text[0].to(device)
+                input_lengths = batch.text[1].to(device)
+
+                # compute student outputs
+                output = st_model(input, input_lengths)
+                # print("st_output", output)
+                te_scores_list = []
+                for j, te in enumerate(teacher_models):
+                    te.to(device)
+                    te.eval()
+                    with torch.no_grad():
+                        t_output = te(input, input_lengths)
+                        t_output = t_output.float()
+                    t_output = F.softmax(t_output/temp) # softmax with temperature
+                    te_scores_list.append(t_output)
+                te_scores_Tensor = torch.stack(te_scores_list, dim=1)
+                mean_logits = avg_logits(te_scores_Tensor)
+                
+                kd_loss = 0
+                st_model.zero_grad() # optimizer_sgd.zero_grad() # st_model.zero_grad()
+
+                # compute gradient and do SGD step
+                kd_loss = distillation_loss(output, target, mean_logits, temp=temp, alpha=0.7)     
+                batch_loss = kd_loss
+
+                batch_loss.backward(retain_graph=True)
+                optimizer_sgd.step()
+
+                output = output.float()
+                # print("output", output)
+                batch_loss = batch_loss.float()
+                # print("batch_loss_float", batch_loss)
+                all_loss += batch_loss.item()
+            print("epoch: ", epoch, "\t" , "loss: ", all_loss)
+
+        end = time.time()
+        print ("time : ", end - start)
+
+        # save model
+        model_filename = model_path + model_name + ".pth"
+        torch.save(st_model.state_dict(), model_filename)
+
+        # release GPU memory
+        torch.cuda.empty_cache()
+        return st_model, device
+                
     def predict(model, device, batch_iter, token_name="distilbert", title_name=None, num_classes=2):
         # # Set up GPU
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")      
