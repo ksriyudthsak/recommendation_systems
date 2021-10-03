@@ -7,3 +7,5 @@ This branch is for my study on recommendation systems
 ### 20210701
 - Knowledge Distillation
 
+### 20211003
+- Entity and Knowledge graph
